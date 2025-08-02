@@ -1,12 +1,14 @@
 require("dotenv").config();
-const express  = require("express");
+const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const connectDB  = require("./config/db");
+
+const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const incomeRoutes = require("./routes/incomeRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
 const dashboardRoutes = require('./routes/dashboardRoutes');
+
 const app = express();
 
 app.use(
@@ -19,7 +21,7 @@ app.use(
 
 app.use(express.json());
 
-// Connect to MongoDB
+// MongoDB Connection
 connectDB();
 
 // API Routes
@@ -28,10 +30,10 @@ app.use("/api/v1/income", incomeRoutes);
 app.use("/api/v1/expense", expenseRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 
-// Static files (uploads)
+// Static uploads route
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// 🔥 Serve React frontend
+// Serve frontend build
 app.use(express.static(path.join(__dirname, "client/build")));
 
 app.get("*", (req, res) => {
@@ -40,4 +42,6 @@ app.get("*", (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server is running at ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server is running at port ${PORT}`);
+});
