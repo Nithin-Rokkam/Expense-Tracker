@@ -4,6 +4,7 @@ const cors = require("cors");
 const path = require("path");
 
 const connectDB = require("./config/db");
+
 const authRoutes = require("./routes/authRoutes");
 const incomeRoutes = require("./routes/incomeRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
@@ -11,17 +12,17 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const app = express();
 
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-  })
-);
+// CORS
+app.use(cors({
+  origin: process.env.CLIENT_URL || "*",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
+// Middleware
 app.use(express.json());
 
-// MongoDB Connection
+// Connect DB
 connectDB();
 
 // API Routes
@@ -30,10 +31,10 @@ app.use("/api/v1/income", incomeRoutes);
 app.use("/api/v1/expense", expenseRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 
-// Static uploads route
+// Serve uploaded images
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Serve frontend build
+// React frontend (if deployed from client/build)
 app.use(express.static(path.join(__dirname, "client/build")));
 
 app.get("*", (req, res) => {
