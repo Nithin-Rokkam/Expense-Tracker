@@ -8,16 +8,18 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const incomeRoutes = require("./routes/incomeRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
-const dashboardRoutes = require('./routes/dashboardRoutes');
+const dashboardRoutes = require("./routes/dashboardRoutes");
 
 const app = express();
 
 // CORS
-app.use(cors({
-  origin: process.env.CLIENT_URL || "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // Middleware
 app.use(express.json());
@@ -34,11 +36,26 @@ app.use("/api/v1/dashboard", dashboardRoutes);
 // Serve uploaded images
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// React frontend (if deployed from client/build)
-app.use(express.static(path.join(__dirname, "client/build")));
+// Serve React frontend if build directory exists
+const clientBuildPath = path.join(__dirname, "client/build");
+if (require("fs").existsSync(clientBuildPath)) {
+  app.use(express.static(clientBuildPath));
 
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "client/build", "index.html"));
+  // Catch-all route for React app
+  app.get("/*", (req, res) => {
+    res.sendFile(path.join(clientBuildPath, "index.html"));
+  });
+} else {
+  // If no build directory, just serve API
+  app.get("/", (req, res) => {
+    res.json({ message: "Expense Tracker API is running" });
+  });
+}
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: "Something went wrong!" });
 });
 
 // Start server
