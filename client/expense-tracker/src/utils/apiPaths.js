@@ -1,4 +1,4 @@
-export const BASE_URL = "https://your-render-backend-url.onrender.com";
+export const BASE_URL = "http://localhost:5000";
 
 //utils/apipaths.js
 export const API_PATHS = {
