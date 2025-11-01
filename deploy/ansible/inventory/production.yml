@@ -1,0 +1,9 @@
+all:
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  children:
+    expense_tracker:
+      hosts:
+        expense-tracker-1:
+          ansible_host: X.X.X.X
+          ansible_port: 22

@@ -1,0 +1,50 @@
+---
+- name: Install frontend dependencies
+  community.general.npm:
+    path: "{{ frontend_dir }}"
+    production: false
+
+- name: Render Vite production env
+  ansible.builtin.template:
+    src: env.production.j2
+    dest: "{{ frontend_dir }}/.env.production"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0644"
+
+- name: Build frontend bundle
+  ansible.builtin.command: npm run build
+  args:
+    chdir: "{{ frontend_dir }}"
+  register: frontend_build
+  changed_when: frontend_build.rc == 0 and 'run build' in frontend_build.stdout
+  notify:
+    - Reload nginx
+    - Restart backend service
+
+- name: Deploy nginx site
+  ansible.builtin.copy:
+    src: nginx.conf
+    dest: /etc/nginx/sites-available/expense-tracker.conf
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Enable nginx site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/expense-tracker.conf
+    dest: /etc/nginx/sites-enabled/expense-tracker.conf
+    state: link
+  notify: Reload nginx
+
+- name: Remove default nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Ensure nginx running
+  ansible.builtin.service:
+    name: nginx
+    enabled: true
+    state: started
+

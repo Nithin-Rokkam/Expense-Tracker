@@ -1,0 +1,11 @@
+---
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+
+- name: Restart backend service
+  ansible.builtin.systemd:
+    name: "{{ service_name }}"
+    state: restarted
+

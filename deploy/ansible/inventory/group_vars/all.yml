@@ -1,0 +1,21 @@
+# Repository
+app_repo_url: https://github.com/your-user/expense-tracker.git
+app_repo_version: main
+
+# Paths & service
+app_user: exptracker
+app_group: exptracker
+deploy_root: /opt/expense-tracker
+frontend_dir: "{{ deploy_root }}/client/expense-tracker"
+backend_dir: "{{ deploy_root }}/server"
+service_name: expense-tracker
+backend_port: 5000
+public_domain: expense.yourdomain.com
+
+# Mongo selection
+mongo_use_atlas: true
+mongo_data_path: /var/lib/mongodb
+
+# TLS / Proxy
+enable_ssl: false
+

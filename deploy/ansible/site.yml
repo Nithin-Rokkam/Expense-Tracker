@@ -1,0 +1,14 @@
+---
+- name: Provision Expense Tracker
+  hosts: expense_tracker
+  become: true
+  gather_facts: true
+  vars_files:
+    - inventory/group_vars/all.vault.yml
+
+  roles:
+    - common
+    - { role: mongo, when: not mongo_use_atlas }
+    - backend
+    - frontend
+

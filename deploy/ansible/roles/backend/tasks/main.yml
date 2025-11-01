@@ -1,0 +1,48 @@
+---
+- name: Clone application repository
+  ansible.builtin.git:
+    repo: "{{ app_repo_url }}"
+    dest: "{{ deploy_root }}"
+    version: "{{ app_repo_version }}"
+    force: true
+    accept_hostkey: true
+  notify: Restart backend service
+
+- name: Install backend dependencies
+  community.general.npm:
+    path: "{{ backend_dir }}"
+    production: true
+  notify: Restart backend service
+
+- name: Ensure uploads directory exists
+  ansible.builtin.file:
+    path: "{{ backend_dir }}/uploads"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    state: directory
+    mode: "0755"
+
+- name: Render backend environment file
+  ansible.builtin.template:
+    src: env.server.j2
+    dest: "{{ backend_dir }}/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0600"
+  notify: Restart backend service
+
+- name: Install systemd unit
+  ansible.builtin.template:
+    src: expense-tracker.service.j2
+    dest: /etc/systemd/system/{{ service_name }}.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart backend service
+
+- name: Ensure backend service enabled
+  ansible.builtin.systemd:
+    name: "{{ service_name }}"
+    enabled: true
+    state: started
+

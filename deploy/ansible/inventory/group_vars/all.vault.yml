@@ -1,0 +1,11 @@
+# This file must be encrypted with ansible-vault before use.
+# Run: ansible-vault encrypt inventory/group_vars/all.vault.yml
+vault_backend_env:
+  MONGO_URL: mongodb+srv://username:password@cluster/expense
+  JWT_SECRET: change-me
+  CLIENT_URL: https://expense.yourdomain.com
+  PORT: 5000
+
+vault_frontend_env:
+  VITE_API_URL: https://expense.yourdomain.com
+

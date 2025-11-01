@@ -1,0 +1,19 @@
+[Unit]
+Description=Expense Tracker Backend
+After=network.target
+
+[Service]
+Type=simple
+User={{ app_user }}
+Group={{ app_group }}
+WorkingDirectory={{ backend_dir }}
+EnvironmentFile={{ backend_dir }}/.env
+ExecStart=/usr/bin/node {{ backend_dir }}/server.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/var/log/{{ service_name }}.log
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target
+

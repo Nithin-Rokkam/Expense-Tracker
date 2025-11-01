@@ -1,0 +1,31 @@
+---
+- name: Add MongoDB GPG key
+  ansible.builtin.apt_key:
+    url: https://pgp.mongodb.com/server-7.0.asc
+    state: present
+
+- name: Add MongoDB repository
+  ansible.builtin.apt_repository:
+    repo: "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/7.0 multiverse"
+    state: present
+
+- name: Install MongoDB packages
+  ansible.builtin.apt:
+    name: mongodb-org
+    state: present
+    update_cache: true
+
+- name: Ensure MongoDB data dir exists
+  ansible.builtin.file:
+    path: "{{ mongo_data_path }}"
+    owner: mongodb
+    group: mongodb
+    state: directory
+    mode: "0755"
+
+- name: Enable and start MongoDB
+  ansible.builtin.systemd:
+    name: mongod
+    enabled: true
+    state: started
+
