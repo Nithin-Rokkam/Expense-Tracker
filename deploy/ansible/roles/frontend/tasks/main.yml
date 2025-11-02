@@ -1,8 +1,8 @@
 ---
 - name: Install frontend dependencies
-  community.general.npm:
-    path: "{{ frontend_dir }}"
-    production: false
+  ansible.builtin.command: npm install
+  args:
+    chdir: "{{ frontend_dir }}"
 
 - name: Render Vite production env
   ansible.builtin.template:
@@ -23,8 +23,8 @@
     - Restart backend service
 
 - name: Deploy nginx site
-  ansible.builtin.copy:
-    src: nginx.conf
+  ansible.builtin.template:
+    src: nginx.conf.j2
     dest: /etc/nginx/sites-available/expense-tracker.conf
     mode: "0644"
   notify: Reload nginx
@@ -47,4 +47,3 @@
     name: nginx
     enabled: true
     state: started
-

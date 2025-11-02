@@ -1,4 +1,10 @@
 ---
+- name: Remove existing deployment directory if broken
+  ansible.builtin.file:
+    path: "{{ deploy_root }}"
+    state: absent
+  when: ansible_check_mode == false
+
 - name: Clone application repository
   ansible.builtin.git:
     repo: "{{ app_repo_url }}"
@@ -9,9 +15,9 @@
   notify: Restart backend service
 
 - name: Install backend dependencies
-  community.general.npm:
-    path: "{{ backend_dir }}"
-    production: true
+  ansible.builtin.command: npm install --production
+  args:
+    chdir: "{{ backend_dir }}"
   notify: Restart backend service
 
 - name: Ensure uploads directory exists
@@ -45,4 +51,3 @@
     name: "{{ service_name }}"
     enabled: true
     state: started
-
