@@ -5,7 +5,8 @@ all:
     expense_tracker:
       hosts:
         expense-tracker-1:
-          ansible_host: 15.206.186.213
+          ansible_host: 65.2.123.158
           ansible_user: ubuntu
           ansible_port: 22
           ansible_ssh_private_key_file: ~/.ssh/MyKeyPair.pem
+

@@ -1,6 +1,11 @@
 # Expense Tracker Ansible Deployment
 
-This directory contains an Ansible playbook that provisions an Ubuntu-based EC2 instance, deploys the Expense Tracker application, and configures Nginx as a reverse proxy.
+This directory contains Ansible playbooks and scripts to deploy the Expense Tracker application to AWS EC2.
+
+**Current Status:**
+- Server IP: `65.2.123.158`
+- Application URL: `http://65.2.123.158:8000`
+- Last Updated: November 8, 2025
 
 ## Prerequisites
 
@@ -97,3 +102,146 @@ aws ec2 run-instances --image-id <AMI> --instance-type t3.small --key-name expen
 - Monitor services with `systemctl status expense-tracker` and `journalctl -u expense-tracker -f`.
 - Regularly rotate secrets and update via Vault.
 
+---
+
+## 🚀 Quick Start Guides
+
+### When AWS Instance Restarts (IP Changes)
+**Read:** `INSTANCE_RESTART_GUIDE.md` - Complete step-by-step guide
+
+**Quick Fix:**
+```powershell
+# Update local files
+.\quick-update.ps1 -NewIP "NEW_IP_HERE"
+
+# Fix server
+.\fix-on-server.ps1
+```
+
+### Understanding Ansible Deployment
+- **ANSIBLE_DEPLOYMENT_EXPLAINED.md** - How everything works
+- **STEP_BY_STEP_GUIDE.md** - Detailed deployment instructions
+- **RUN_ANSIBLE_ON_WINDOWS.md** - Using Ansible on Windows (WSL)
+
+### Available Scripts
+- `fix-on-server.ps1` - Quick fix for IP changes (PowerShell)
+- `quick-update.ps1` - Update all config files with new IP
+- `update-ip.ps1` - Update inventory files only
+- `run-ansible.ps1` - Helper to run Ansible in WSL
+
+---
+
+## 📋 File Structure
+
+```
+deploy/ansible/
+├── README.md                          # This file
+├── INSTANCE_RESTART_GUIDE.md         # ⭐ Read this when IP changes
+├── ANSIBLE_DEPLOYMENT_EXPLAINED.md    # Theory and concepts
+├── STEP_BY_STEP_GUIDE.md             # Practical guide
+├── RUN_ANSIBLE_ON_WINDOWS.md         # WSL setup
+├── AWS_IP_CHANGE_FIX.md              # IP change solutions
+├── PROJECT_STRUCTURE.md              # Project overview
+│
+├── site.yml                          # Main playbook
+├── ansible.cfg                       # Ansible configuration
+│
+├── inventory/
+│   ├── production.yml                # Server details
+│   └── group_vars/
+│       ├── all.yml                   # Public variables
+│       └── all.vault.yml             # Encrypted secrets
+│
+├── roles/                            # Ansible roles
+│   ├── common/                       # Base setup
+│   ├── mongo/                        # MongoDB (optional)
+│   ├── backend/                      # Backend deployment
+│   └── frontend/                     # Frontend build
+│
+└── Scripts/
+    ├── fix-on-server.ps1             # Quick fix script
+    ├── quick-update.ps1              # Update all files
+    ├── update-ip.ps1                 # Update inventory
+    └── run-ansible.ps1               # WSL helper
+```
+
+---
+
+## ⚡ Common Tasks
+
+### After AWS Instance Restart
+```powershell
+# Get new IP from AWS Console, then:
+.\quick-update.ps1 -NewIP "65.2.123.158"
+.\fix-on-server.ps1
+```
+
+### Deploy with Ansible (from WSL)
+```bash
+wsl
+cd /mnt/c/Users/nithi/OneDrive/Desktop/CSE/Expense-Tracker/deploy/ansible
+ansible-playbook -i inventory/production.yml site.yml --ask-vault-pass
+```
+
+### Check Service Status
+```bash
+ssh -i ~/.ssh/MyKeyPair.pem ubuntu@65.2.123.158 "sudo systemctl status expense-tracker"
+```
+
+### View Logs
+```bash
+ssh -i ~/.ssh/MyKeyPair.pem ubuntu@65.2.123.158 "sudo journalctl -u expense-tracker -f"
+```
+
+---
+
+## 🛡️ Prevent IP Changes - Use Elastic IP
+
+1. AWS Console → EC2 → Elastic IPs
+2. Allocate Elastic IP address
+3. Associate with your instance
+4. Update configuration once with Elastic IP
+5. Never worry about IP changes again!
+
+See `INSTANCE_RESTART_GUIDE.md` for details.
+
+---
+
+## 📚 Documentation Index
+
+| Document | Purpose |
+|----------|---------|
+| **INSTANCE_RESTART_GUIDE.md** | What to do when AWS instance restarts |
+| **ANSIBLE_DEPLOYMENT_EXPLAINED.md** | Complete theory and architecture |
+| **STEP_BY_STEP_GUIDE.md** | Practical deployment walkthrough |
+| **RUN_ANSIBLE_ON_WINDOWS.md** | How to use Ansible on Windows |
+| **AWS_IP_CHANGE_FIX.md** | Solutions for IP change issues |
+| **PROJECT_STRUCTURE.md** | File structure overview |
+
+---
+
+## 🆘 Troubleshooting
+
+### Login Timeout Error
+**Cause:** Frontend calling wrong IP  
+**Fix:** Run `.\fix-on-server.ps1` and clear browser cache
+
+### Ansible Won't Run on Windows
+**Cause:** Ansible doesn't work natively on Windows  
+**Fix:** Use WSL - see `RUN_ANSIBLE_ON_WINDOWS.md`
+
+### Service Won't Start
+**Check logs:**
+```bash
+sudo journalctl -u expense-tracker -n 50
+```
+
+### Build Fails
+**Fix permissions:**
+```bash
+sudo chown -R exptracker:exptracker /opt/expense-tracker
+```
+
+---
+
+**For detailed help, see `INSTANCE_RESTART_GUIDE.md`** 🚀
