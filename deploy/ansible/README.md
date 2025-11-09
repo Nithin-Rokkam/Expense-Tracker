@@ -3,9 +3,12 @@
 This directory contains Ansible playbooks and scripts to deploy the Expense Tracker application to AWS EC2.
 
 **Current Status:**
-- Server IP: `65.2.123.158`
-- Application URL: `http://65.2.123.158:8000`
-- Last Updated: November 8, 2025
+- Server IP: `3.110.163.190`
+- Application URL: `http://3.110.163.190:8000`
+- Security: ✅ Enabled (Firewall, Fail2Ban, SSH Hardening)
+- Monitoring: ✅ Enabled (Health checks, System monitoring)
+- Backups: ✅ Automated (Daily & Weekly)
+- Last Updated: November 9, 2025
 
 ## Prerequisites
 
@@ -106,6 +109,24 @@ aws ec2 run-instances --image-id <AMI> --instance-type t3.small --key-name expen
 
 ## 🚀 Quick Start Guides
 
+### Security & Monitoring (NEW!)
+**Read:** `SECURITY_MONITORING_GUIDE.md` - Complete security & monitoring guide
+
+**Deploy Security & Monitoring:**
+```bash
+# From WSL
+cd /mnt/c/Users/nithi/OneDrive/Desktop/CSE/Expense-Tracker/deploy/ansible
+./deploy-security-monitoring.sh
+```
+
+**Features Included:**
+- 🔒 UFW Firewall
+- 🛡️ Fail2Ban (brute-force protection)
+- 🔐 SSH Hardening
+- 📊 Health monitoring (auto-restart)
+- 💾 Automated backups
+- 📝 Log management
+
 ### When AWS Instance Restarts (IP Changes)
 **Read:** `INSTANCE_RESTART_GUIDE.md` - Complete step-by-step guide
 
@@ -122,12 +143,14 @@ aws ec2 run-instances --image-id <AMI> --instance-type t3.small --key-name expen
 - **ANSIBLE_DEPLOYMENT_EXPLAINED.md** - How everything works
 - **STEP_BY_STEP_GUIDE.md** - Detailed deployment instructions
 - **RUN_ANSIBLE_ON_WINDOWS.md** - Using Ansible on Windows (WSL)
+- **SECURITY_MONITORING_GUIDE.md** - Security & monitoring features
 
 ### Available Scripts
 - `fix-on-server.ps1` - Quick fix for IP changes (PowerShell)
 - `quick-update.ps1` - Update all config files with new IP
 - `update-ip.ps1` - Update inventory files only
 - `run-ansible.ps1` - Helper to run Ansible in WSL
+- `deploy-security-monitoring.sh` - Deploy security & monitoring (Bash)
 
 ---
 

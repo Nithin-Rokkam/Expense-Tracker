@@ -36,8 +36,9 @@
     name: "{{ app_user }}"
     group: "{{ app_group }}"
     system: true
-    create_home: false
-    shell: /usr/sbin/nologin
+    create_home: true
+    home: /home/{{ app_user }}
+    shell: /bin/bash
 
 - name: Create deploy root
   ansible.builtin.file:

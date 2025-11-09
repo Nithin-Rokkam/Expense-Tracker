@@ -11,4 +11,7 @@
     - { role: mongo, when: not mongo_use_atlas }
     - backend
     - frontend
+    - security      # Firewall, Fail2Ban, SSH hardening
+    - monitoring    # Health checks, log monitoring
+    - backup        # Automated backups
 

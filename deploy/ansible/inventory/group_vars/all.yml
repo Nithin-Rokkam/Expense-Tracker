@@ -10,7 +10,7 @@ frontend_dir: "{{ deploy_root }}/client/expense-tracker"
 backend_dir: "{{ deploy_root }}/server"
 service_name: expense-tracker
 backend_port: 8000
-public_domain: 65.2.123.158
+public_domain: 3.110.163.190
 
 # Mongo selection
 mongo_use_atlas: true
@@ -18,4 +18,18 @@ mongo_data_path: /var/lib/mongodb
 
 # TLS / Proxy
 enable_ssl: false
+
+# Security Configuration
+allow_backend_port: true          # Allow external access to backend port
+reset_firewall: false             # Set to true to reset UFW on first run
+disable_password_auth: false      # Set to true to disable SSH password auth (keys only)
+
+# Monitoring Configuration
+health_check_interval: 5          # Minutes between health checks
+system_monitor_interval: 15       # Minutes between system resource checks
+log_retention_days: 14            # Days to keep logs
+
+# Backup Configuration
+backup_retention_days: 7          # Days to keep daily backups
+backup_retention_weeks: 4         # Weeks to keep weekly backups
 

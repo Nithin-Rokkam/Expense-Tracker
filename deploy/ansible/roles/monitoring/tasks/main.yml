@@ -1,0 +1,237 @@
+---
+# Monitoring Role - Health Checks, Logging, Alerts
+# This role sets up application and system monitoring
+
+- name: Create monitoring directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /var/log/expense-tracker
+    - /opt/monitoring
+    - /opt/monitoring/scripts
+
+# Health Check Script
+- name: Create health check script
+  copy:
+    dest: /opt/monitoring/scripts/health-check.sh
+    content: |
+      #!/bin/bash
+      # Health check script for Expense Tracker
+      
+      LOG_FILE="/var/log/expense-tracker/health-check.log"
+      SERVICE_NAME="expense-tracker"
+      HEALTH_URL="http://localhost:{{ backend_port }}/"
+      MAX_RETRIES=3
+      
+      log_message() {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+      }
+      
+      check_service() {
+        if systemctl is-active --quiet "$SERVICE_NAME"; then
+          return 0
+        else
+          return 1
+        fi
+      }
+      
+      check_http() {
+        local retry=0
+        while [ $retry -lt $MAX_RETRIES ]; do
+          if curl -f -s -o /dev/null "$HEALTH_URL"; then
+            return 0
+          fi
+          retry=$((retry + 1))
+          sleep 2
+        done
+        return 1
+      }
+      
+      # Main health check
+      if ! check_service; then
+        log_message "ERROR: Service $SERVICE_NAME is not running"
+        log_message "ACTION: Starting service..."
+        systemctl start "$SERVICE_NAME"
+        sleep 5
+        if check_service; then
+          log_message "SUCCESS: Service started successfully"
+        else
+          log_message "CRITICAL: Failed to start service"
+          exit 1
+        fi
+      fi
+      
+      if ! check_http; then
+        log_message "ERROR: HTTP health check failed"
+        log_message "ACTION: Restarting service..."
+        systemctl restart "$SERVICE_NAME"
+        sleep 5
+        if check_http; then
+          log_message "SUCCESS: Service restarted and responding"
+        else
+          log_message "CRITICAL: Service not responding after restart"
+          exit 1
+        fi
+      else
+        log_message "INFO: Health check passed"
+      fi
+    mode: '0755'
+
+- name: Schedule health check every 5 minutes
+  cron:
+    name: "Expense Tracker health check"
+    minute: "*/5"
+    job: "/opt/monitoring/scripts/health-check.sh"
+    user: root
+
+# System Monitoring Script
+- name: Create system monitoring script
+  copy:
+    dest: /opt/monitoring/scripts/system-monitor.sh
+    content: |
+      #!/bin/bash
+      # System resource monitoring
+      
+      LOG_FILE="/var/log/expense-tracker/system-monitor.log"
+      
+      # Get system metrics
+      CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
+      MEMORY_USAGE=$(free | grep Mem | awk '{printf "%.2f", $3/$2 * 100.0}')
+      DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | cut -d'%' -f1)
+      
+      # Log metrics
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] CPU: ${CPU_USAGE}% | Memory: ${MEMORY_USAGE}% | Disk: ${DISK_USAGE}%" >> "$LOG_FILE"
+      
+      # Alert if thresholds exceeded
+      if (( $(echo "$CPU_USAGE > 80" | bc -l) )); then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: High CPU usage: ${CPU_USAGE}%" >> "$LOG_FILE"
+      fi
+      
+      if (( $(echo "$MEMORY_USAGE > 80" | bc -l) )); then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: High memory usage: ${MEMORY_USAGE}%" >> "$LOG_FILE"
+      fi
+      
+      if [ "$DISK_USAGE" -gt 80 ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: High disk usage: ${DISK_USAGE}%" >> "$LOG_FILE"
+      fi
+    mode: '0755'
+
+- name: Schedule system monitoring every 15 minutes
+  cron:
+    name: "System resource monitoring"
+    minute: "*/15"
+    job: "/opt/monitoring/scripts/system-monitor.sh"
+    user: root
+
+# Application Log Monitoring
+- name: Create log monitoring script
+  copy:
+    dest: /opt/monitoring/scripts/log-monitor.sh
+    content: |
+      #!/bin/bash
+      # Monitor application logs for errors
+      
+      LOG_FILE="/var/log/expense-tracker/log-monitor.log"
+      APP_LOG="/var/log/expense-tracker/app.log"
+      
+      if [ ! -f "$APP_LOG" ]; then
+        exit 0
+      fi
+      
+      # Check for errors in last 5 minutes
+      ERROR_COUNT=$(journalctl -u expense-tracker --since "5 minutes ago" | grep -i "error" | wc -l)
+      
+      if [ "$ERROR_COUNT" -gt 0 ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Found $ERROR_COUNT errors in last 5 minutes" >> "$LOG_FILE"
+        journalctl -u expense-tracker --since "5 minutes ago" | grep -i "error" >> "$LOG_FILE"
+      fi
+    mode: '0755'
+
+- name: Schedule log monitoring every 5 minutes
+  cron:
+    name: "Application log monitoring"
+    minute: "*/5"
+    job: "/opt/monitoring/scripts/log-monitor.sh"
+    user: root
+
+# Log Rotation Configuration
+- name: Configure log rotation for application logs
+  copy:
+    dest: /etc/logrotate.d/expense-tracker
+    content: |
+      /var/log/expense-tracker/*.log {
+        daily
+        rotate 14
+        compress
+        delaycompress
+        missingok
+        notifempty
+        create 0644 {{ app_user }} {{ app_group }}
+        sharedscripts
+        postrotate
+          systemctl reload expense-tracker > /dev/null 2>&1 || true
+        endscript
+      }
+    mode: '0644'
+
+# Monitoring Dashboard Script
+- name: Create monitoring dashboard script
+  copy:
+    dest: /opt/monitoring/scripts/dashboard.sh
+    content: |
+      #!/bin/bash
+      # Simple monitoring dashboard
+      
+      echo "=================================="
+      echo "Expense Tracker Monitoring Dashboard"
+      echo "=================================="
+      echo ""
+      
+      # Service Status
+      echo "Service Status:"
+      systemctl status expense-tracker --no-pager -l | head -5
+      echo ""
+      
+      # System Resources
+      echo "System Resources:"
+      echo "  CPU: $(top -bn1 | grep "Cpu(s)" | awk '{print $2}')%"
+      echo "  Memory: $(free -h | awk 'NR==2 {print $3 "/" $2}')"
+      echo "  Disk: $(df -h / | awk 'NR==2 {print $5 " used"}')"
+      echo ""
+      
+      # Recent Errors
+      echo "Recent Errors (last hour):"
+      ERROR_COUNT=$(journalctl -u expense-tracker --since "1 hour ago" | grep -i "error" | wc -l)
+      echo "  Error count: $ERROR_COUNT"
+      echo ""
+      
+      # Health Check Status
+      echo "Last Health Check:"
+      tail -n 1 /var/log/expense-tracker/health-check.log 2>/dev/null || echo "  No health check logs found"
+      echo ""
+      
+      # Uptime
+      echo "System Uptime:"
+      uptime
+      echo ""
+      
+      echo "=================================="
+    mode: '0755'
+
+# Create monitoring summary command
+- name: Create monitoring alias
+  lineinfile:
+    path: /home/{{ ansible_user }}/.bashrc
+    line: "alias monitor='/opt/monitoring/scripts/dashboard.sh'"
+    create: yes
+
+- name: Display monitoring setup complete
+  debug:
+    msg:
+      - "Monitoring configuration complete!"
+      - "Health checks: Every 5 minutes"
+      - "System monitoring: Every 15 minutes"
+      - "Log rotation: Daily (14 days retention)"
+      - "View dashboard: ssh to server and run 'monitor'"

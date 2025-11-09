@@ -1,0 +1,283 @@
+---
+# Backup Role - Automated backups for application and database
+# This role sets up automated backup system
+
+- name: Create backup directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+  loop:
+    - /opt/backups
+    - /opt/backups/daily
+    - /opt/backups/weekly
+    - /opt/backups/scripts
+
+# Application Backup Script
+- name: Create application backup script
+  copy:
+    dest: /opt/backups/scripts/backup-app.sh
+    content: |
+      #!/bin/bash
+      # Application backup script
+      
+      BACKUP_DIR="/opt/backups/daily"
+      APP_DIR="{{ deploy_root }}"
+      DATE=$(date +%Y%m%d_%H%M%S)
+      BACKUP_FILE="expense-tracker-app-${DATE}.tar.gz"
+      LOG_FILE="/var/log/expense-tracker/backup.log"
+      RETENTION_DAYS=7
+      
+      log_message() {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+      }
+      
+      log_message "Starting application backup..."
+      
+      # Create backup
+      if tar -czf "${BACKUP_DIR}/${BACKUP_FILE}" \
+        --exclude='node_modules' \
+        --exclude='.git' \
+        --exclude='*.log' \
+        -C "$(dirname $APP_DIR)" "$(basename $APP_DIR)"; then
+        
+        BACKUP_SIZE=$(du -h "${BACKUP_DIR}/${BACKUP_FILE}" | cut -f1)
+        log_message "SUCCESS: Backup created: ${BACKUP_FILE} (${BACKUP_SIZE})"
+        
+        # Remove old backups
+        find "$BACKUP_DIR" -name "expense-tracker-app-*.tar.gz" -mtime +$RETENTION_DAYS -delete
+        log_message "INFO: Cleaned up backups older than ${RETENTION_DAYS} days"
+      else
+        log_message "ERROR: Backup failed!"
+        exit 1
+      fi
+      
+      # List current backups
+      BACKUP_COUNT=$(ls -1 "$BACKUP_DIR"/expense-tracker-app-*.tar.gz 2>/dev/null | wc -l)
+      log_message "INFO: Total backups: ${BACKUP_COUNT}"
+    mode: '0755'
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+
+# Database Backup Script (for MongoDB Atlas)
+- name: Create database backup script
+  copy:
+    dest: /opt/backups/scripts/backup-db.sh
+    content: |
+      #!/bin/bash
+      # Database backup script (MongoDB dump)
+      
+      BACKUP_DIR="/opt/backups/daily"
+      DATE=$(date +%Y%m%d_%H%M%S)
+      BACKUP_FILE="expense-tracker-db-${DATE}"
+      LOG_FILE="/var/log/expense-tracker/backup.log"
+      RETENTION_DAYS=7
+      
+      log_message() {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+      }
+      
+      log_message "Starting database backup..."
+      
+      # Note: For MongoDB Atlas, you should use Atlas's built-in backup
+      # This is a placeholder for local MongoDB backup
+      # If using Atlas, enable automated backups in Atlas dashboard
+      
+      log_message "INFO: Using MongoDB Atlas - backups managed by Atlas"
+      log_message "INFO: Verify backups at: https://cloud.mongodb.com"
+    mode: '0755'
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+
+# Configuration Backup Script
+- name: Create configuration backup script
+  copy:
+    dest: /opt/backups/scripts/backup-config.sh
+    content: |
+      #!/bin/bash
+      # Configuration files backup
+      
+      BACKUP_DIR="/opt/backups/daily"
+      DATE=$(date +%Y%m%d_%H%M%S)
+      BACKUP_FILE="expense-tracker-config-${DATE}.tar.gz"
+      LOG_FILE="/var/log/expense-tracker/backup.log"
+      
+      log_message() {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+      }
+      
+      log_message "Starting configuration backup..."
+      
+      # Backup important config files
+      tar -czf "${BACKUP_DIR}/${BACKUP_FILE}" \
+        /etc/systemd/system/expense-tracker.service \
+        /etc/nginx/sites-available/expense-tracker 2>/dev/null \
+        {{ deploy_root }}/server/.env 2>/dev/null \
+        {{ deploy_root }}/client/expense-tracker/.env.production 2>/dev/null
+      
+      if [ $? -eq 0 ]; then
+        log_message "SUCCESS: Configuration backup created: ${BACKUP_FILE}"
+      else
+        log_message "WARNING: Some configuration files may be missing"
+      fi
+    mode: '0755'
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+
+# Weekly Full Backup Script
+- name: Create weekly full backup script
+  copy:
+    dest: /opt/backups/scripts/backup-weekly.sh
+    content: |
+      #!/bin/bash
+      # Weekly full backup
+      
+      BACKUP_DIR="/opt/backups/weekly"
+      DATE=$(date +%Y%m%d)
+      BACKUP_FILE="expense-tracker-full-${DATE}.tar.gz"
+      LOG_FILE="/var/log/expense-tracker/backup.log"
+      RETENTION_WEEKS=4
+      
+      log_message() {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+      }
+      
+      log_message "Starting weekly full backup..."
+      
+      # Create full backup
+      tar -czf "${BACKUP_DIR}/${BACKUP_FILE}" \
+        --exclude='node_modules' \
+        --exclude='.git' \
+        -C / \
+        opt/expense-tracker \
+        etc/systemd/system/expense-tracker.service \
+        var/log/expense-tracker
+      
+      if [ $? -eq 0 ]; then
+        BACKUP_SIZE=$(du -h "${BACKUP_DIR}/${BACKUP_FILE}" | cut -f1)
+        log_message "SUCCESS: Weekly backup created: ${BACKUP_FILE} (${BACKUP_SIZE})"
+        
+        # Remove old weekly backups
+        find "$BACKUP_DIR" -name "expense-tracker-full-*.tar.gz" -mtime +$((RETENTION_WEEKS * 7)) -delete
+      else
+        log_message "ERROR: Weekly backup failed!"
+      fi
+    mode: '0755'
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+
+# Restore Script
+- name: Create restore script
+  copy:
+    dest: /opt/backups/scripts/restore.sh
+    content: |
+      #!/bin/bash
+      # Restore from backup
+      
+      if [ -z "$1" ]; then
+        echo "Usage: $0 <backup-file>"
+        echo "Available backups:"
+        ls -lh /opt/backups/daily/expense-tracker-*.tar.gz 2>/dev/null
+        ls -lh /opt/backups/weekly/expense-tracker-*.tar.gz 2>/dev/null
+        exit 1
+      fi
+      
+      BACKUP_FILE="$1"
+      LOG_FILE="/var/log/expense-tracker/backup.log"
+      
+      if [ ! -f "$BACKUP_FILE" ]; then
+        echo "ERROR: Backup file not found: $BACKUP_FILE"
+        exit 1
+      fi
+      
+      echo "WARNING: This will restore from backup and may overwrite current files!"
+      echo "Backup file: $BACKUP_FILE"
+      read -p "Continue? (yes/no): " CONFIRM
+      
+      if [ "$CONFIRM" != "yes" ]; then
+        echo "Restore cancelled"
+        exit 0
+      fi
+      
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting restore from: $BACKUP_FILE" | tee -a "$LOG_FILE"
+      
+      # Stop service
+      systemctl stop expense-tracker
+      
+      # Extract backup
+      tar -xzf "$BACKUP_FILE" -C /
+      
+      # Restart service
+      systemctl start expense-tracker
+      
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Restore completed" | tee -a "$LOG_FILE"
+    mode: '0755'
+
+# Schedule daily application backup
+- name: Schedule daily application backup
+  cron:
+    name: "Daily application backup"
+    hour: "2"
+    minute: "0"
+    job: "/opt/backups/scripts/backup-app.sh"
+    user: "{{ app_user }}"
+
+# Schedule daily configuration backup
+- name: Schedule daily configuration backup
+  cron:
+    name: "Daily configuration backup"
+    hour: "2"
+    minute: "30"
+    job: "/opt/backups/scripts/backup-config.sh"
+    user: "{{ app_user }}"
+
+# Schedule weekly full backup
+- name: Schedule weekly full backup
+  cron:
+    name: "Weekly full backup"
+    weekday: "0"
+    hour: "3"
+    minute: "0"
+    job: "/opt/backups/scripts/backup-weekly.sh"
+    user: "{{ app_user }}"
+
+# Create backup info file
+- name: Create backup information file
+  copy:
+    dest: /opt/backups/README.txt
+    content: |
+      Expense Tracker Backup System
+      =============================
+      
+      Backup Locations:
+      - Daily backups: /opt/backups/daily/
+      - Weekly backups: /opt/backups/weekly/
+      
+      Backup Schedule:
+      - Application: Daily at 2:00 AM (7 days retention)
+      - Configuration: Daily at 2:30 AM (7 days retention)
+      - Full backup: Weekly on Sunday at 3:00 AM (4 weeks retention)
+      
+      Manual Backup:
+      - Application: /opt/backups/scripts/backup-app.sh
+      - Configuration: /opt/backups/scripts/backup-config.sh
+      - Full: /opt/backups/scripts/backup-weekly.sh
+      
+      Restore:
+      - Run: /opt/backups/scripts/restore.sh <backup-file>
+      - Example: /opt/backups/scripts/restore.sh /opt/backups/daily/expense-tracker-app-20250109.tar.gz
+      
+      View Logs:
+      - tail -f /var/log/expense-tracker/backup.log
+    mode: '0644'
+
+- name: Display backup setup complete
+  debug:
+    msg:
+      - "Backup configuration complete!"
+      - "Daily backups: 2:00 AM (application), 2:30 AM (config)"
+      - "Weekly backup: Sunday 3:00 AM (full)"
+      - "Backup location: /opt/backups/"
+      - "Logs: /var/log/expense-tracker/backup.log"
