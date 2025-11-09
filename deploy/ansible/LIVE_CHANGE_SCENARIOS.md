@@ -78,7 +78,7 @@ sudo cat /etc/fail2ban/jail.local
 
 ```bash
 # 1. Show current health check schedule
-crontab -l | grep health-check
+sudo crontab -l | grep health-check
 
 # 2. Edit crontab
 sudo crontab -e
@@ -92,7 +92,7 @@ sudo crontab -e
 # 4. Save and exit (Ctrl+X, Y, Enter)
 
 # 5. Verify the change
-crontab -l | grep health-check
+sudo crontab -l | grep health-check
 
 # 6. Wait 2 minutes and show new log entries
 sudo tail -f /var/log/expense-tracker/health-check.log

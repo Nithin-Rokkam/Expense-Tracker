@@ -10,7 +10,7 @@ frontend_dir: "{{ deploy_root }}/client/expense-tracker"
 backend_dir: "{{ deploy_root }}/server"
 service_name: expense-tracker
 backend_port: 8000
-public_domain: 3.110.163.190
+public_domain: 13.233.44.205
 
 # Mongo selection
 mongo_use_atlas: true
